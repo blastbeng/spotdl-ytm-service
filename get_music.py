@@ -265,10 +265,10 @@ class GetMusic(object):
             self.make_dirs()
             self.delete_old_m3u()
             self.get_liked_songs()
-            self.get_playlists()
-            self.get_subscriptions()
-            self.verify_mp3_files()
-            self.remove_empty_dirs()
+            #self.get_playlists()
+            #self.get_subscriptions()
+            #self.verify_mp3_files()
+            #self.remove_empty_dirs()
 
             try:
                 if len(self.audio_files) != 0 or len(self.track_list) != 0:
@@ -311,13 +311,7 @@ def main():
               str(minutes) + (' minute.' if (minutes == 1) else ' minutes.'))
         get_music = GetMusic()
         schedule.cyclic(dt.timedelta(minutes=minutes), get_music.get)
-        count = 0
         while True:
-            if count == 0:
-                print(schedule)
-            elif count >= minutes:
-                count = 0
-            count = count + 1
             schedule.exec_jobs()
             time.sleep(1)
         print('Done.')
