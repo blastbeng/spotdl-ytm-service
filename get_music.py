@@ -8,7 +8,6 @@ import eyed3
 import logging
 import requests
 import requests_cache
-import time
 from scheduler import Scheduler
 from requests_cache.session import CachedSession
 from requests_cache.backends import SQLiteCache
