@@ -1,16 +1,10 @@
 import os
-import re
 import sys
-import subprocess
-import string
 import random
 import traceback
-import shutil
 import time
 import datetime as dt
 import eyed3
-import glob
-import json
 import logging
 import requests
 import requests_cache
@@ -20,14 +14,8 @@ from requests_cache.session import CachedSession
 from requests_cache.backends import SQLiteCache
 from tqdm import tqdm
 from os.path import dirname
-from os.path import basename
 from os.path import join
 from dotenv import load_dotenv
-from pathlib import Path
-from contextlib import chdir
-from typing import List, Tuple
-from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
 import ytmusicapi
 from ytmusicapi import YTMusic
 from ytmusicapi.auth.oauth import OAuthCredentials
@@ -51,9 +39,9 @@ class Arguments:
     def __init__(self):
         self.config = True
         self.cache_path = os.path.dirname(
-                os.path.realpath(__file__)) + '/config/.spotipy'
+            os.path.realpath(__file__)) + '/config/.spotipy'
         self.cookie_file = os.path.dirname(
-                os.path.realpath(__file__)) + '/config/cookies.txt'
+            os.path.realpath(__file__)) + '/config/cookies.txt'
 
 
 class GetMusic(object):
@@ -62,7 +50,7 @@ class GetMusic(object):
         requests_cache.install_cache(
             'get_music_cache', backend=SQLiteCache(
                 db_path=os.path.dirname(
-                os.path.realpath(__file__)) + '/config/requests_cache.sqlite'))
+                    os.path.realpath(__file__)) + '/config/requests_cache.sqlite'))
 
         self.ytmusic = YTMusic(
             auth=os.path.dirname(
@@ -300,12 +288,14 @@ class GetMusic(object):
                 self.remove_empty_dirs()
         return exit_code
 
+
 def is_int(val):
     try:
         int(val)
         return True
     except (ValueError, TypeError):
         return False
+
 
 def main():
     if (len(sys.argv) == 2 and str(
@@ -315,10 +305,11 @@ def main():
         sys.exit(get_music.get())
     elif (len(sys.argv) == 2 or len(sys.argv) == 3) and str(sys.argv[1]) == "scheduled":
         schedule = Scheduler()
-        minutes=1440
+        minutes = 1440
         if len(sys.argv) == 3 and is_int(sys.argv[2]) and int(sys.argv[2]) > 0:
             minutes = int(sys.argv[2])
-        print('Scheduling youtube music downloader every ' + str(minutes) + (' minute.' if (minutes == 1) else ' minutes.'))
+        print('Scheduling youtube music downloader every ' +
+              str(minutes) + (' minute.' if (minutes == 1) else ' minutes.'))
         get_music = GetMusic()
         schedule.cyclic(dt.timedelta(minutes=minutes), get_music.get)
         while True:
