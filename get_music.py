@@ -312,8 +312,14 @@ def main():
               str(minutes) + (' minute.' if (minutes == 1) else ' minutes.'))
         get_music = GetMusic()
         schedule.cyclic(dt.timedelta(minutes=minutes), get_music.get)
+        count = 0
         while True:
             schedule.exec_jobs()
+            if count == 0:
+                print(schedule)
+            elif count >= 60:
+                count = 0
+            count = count + 1
             time.sleep(1)
         print('Done.')
         sys.exit(0)

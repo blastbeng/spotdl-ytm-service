@@ -17,4 +17,4 @@ services:
       - "./config/config.json:/home/ytmuser/.spotdl/config.json"
       - "./config:/app/config"
       - "/var/media/musica:/var/media/musica"
-    entrypoint: python -u /app/get_music.py scheduled 1
+    entrypoint: python -u /app/get_music.py scheduled
