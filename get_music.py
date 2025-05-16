@@ -265,10 +265,11 @@ class GetMusic(object):
             self.make_dirs()
             self.delete_old_m3u()
             self.get_liked_songs()
-            #self.get_playlists()
-            #self.get_subscriptions()
-            #self.verify_mp3_files()
-            #self.remove_empty_dirs()
+            self.get_playlists()
+            self.get_subscriptions()
+            if len(self.audio_files) != 0:
+                self.verify_mp3_files()
+                self.remove_empty_dirs()
 
             try:
                 if len(self.audio_files) != 0 or len(self.track_list) != 0:

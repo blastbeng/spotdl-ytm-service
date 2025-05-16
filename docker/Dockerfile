@@ -19,10 +19,13 @@ COPY get_music.py .
 COPY docker/entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
-RUN mkdir -p /home/ytmuser/.config/spotdl
+RUN mkdir -p /home/ytmuser/.spotdl/temp
+RUN mkdir -p /home/ytmuser/.spotdl/errors
+RUN touch /home/ytmuser/.spotdl/.spotify_cache
 RUN useradd --create-home ytmuser
-RUN chown -R ytmuser /home/ytmuser
-RUN chown -R ytmuser /app
+RUN chown -R ytmuser:ytmuser /home/ytmuser/.spotdl
+RUN chown -R ytmuser:ytmuser /home/ytmuser
+RUN chown -R ytmuser:ytmuser /app
 
 USER ytmuser
 CMD ["./entrypoint.sh"]
