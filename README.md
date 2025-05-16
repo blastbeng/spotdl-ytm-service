@@ -14,11 +14,11 @@ For youtube music premium users:
 
 ## Install as docker scheduled service
 
-* Run 'docker compose up'
+* Run docker compose up
 
 ## Run as script
 
-* Run './installdeps.sh
+* Run ./installdeps.sh
 * Run python get_music.py <args>
 
 ## Environment
