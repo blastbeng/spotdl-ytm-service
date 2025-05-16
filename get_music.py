@@ -304,7 +304,7 @@ def main():
         get_music = GetMusic()
         sys.exit(get_music.get())
     elif (len(sys.argv) == 2 or len(sys.argv) == 3) and str(sys.argv[1]) == "scheduled":
-        schedule = Scheduler()
+        schedule = Scheduler(max_exec=1)
         minutes = 1440
         if len(sys.argv) == 3 and is_int(sys.argv[2]) and int(sys.argv[2]) > 0:
             minutes = int(sys.argv[2])
@@ -314,12 +314,12 @@ def main():
         schedule.cyclic(dt.timedelta(minutes=minutes), get_music.get)
         count = 0
         while True:
-            schedule.exec_jobs()
             if count == 0:
                 print(schedule)
-            elif count >= 60:
+            elif count >= minutes:
                 count = 0
             count = count + 1
+            schedule.exec_jobs()
             time.sleep(1)
         print('Done.')
         sys.exit(0)
