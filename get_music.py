@@ -308,7 +308,7 @@ def main():
         minutes = 1440
         if len(sys.argv) == 3 and is_int(sys.argv[2]) and int(sys.argv[2]) > 0:
             minutes = int(sys.argv[2])
-        print('Scheduling youtube music downloader every ' +
+        print('Scheduling downloader every ' +
               str(minutes) + (' minute.' if (minutes == 1) else ' minutes.'))
         get_music = GetMusic()
         schedule.cyclic(dt.timedelta(minutes=minutes), get_music.get)

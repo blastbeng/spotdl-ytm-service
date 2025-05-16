@@ -1,16 +1,16 @@
 services:
-  ytm-downloader:
+  spotdl-ytm-service:
     pull_policy: build
     build:
       context: .
       dockerfile: docker/Dockerfile
       network: host
-    container_name: ytm-downloader
+    container_name: spotdl-ytm-service
     environment:
       - PUID=1000
       - PGID=1000
       - TZ=Europe/Rome
-    image: "blastbeng/ytm-downloader:1.0.0"
+    image: "blastbeng/spotdl-ytm-service:1.0.0"
     restart: unless-stopped
     volumes:
       - ".env:/app/.env"
