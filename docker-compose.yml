@@ -1,0 +1,20 @@
+services:
+  ytm-downloader:
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      network: host
+    container_name: ytm-downloader
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Rome
+    image: "blastbeng/ytm-downloader:1.0.0"
+    restart: unless-stopped
+    volumes:
+      - ".env:/app/.env"
+      - "./config/config.json:/home/ytmuser/.spotdl/config.json"
+      - "./config:/app/config"
+      - "/var/media/musica:/var/media/musica"
+    entrypoint: python -u /app/get_music.py scheduled 1

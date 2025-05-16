@@ -1,0 +1,10 @@
+python-dotenv==1.0.0
+ytmusicapi
+autopep8
+ytmdl
+spotdl
+eyed3
+tqdm
+requests-cache
+redis[hiredis]
+scheduler
