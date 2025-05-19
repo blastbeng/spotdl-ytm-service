@@ -9,6 +9,3 @@ ytmdl
 spotdl
 eyed3
 tqdm
-requests-cache
-redis[hiredis]
-waitress

@@ -3,8 +3,6 @@ import random
 import traceback
 import eyed3
 import logging
-import requests_cache
-from requests_cache.backends import SQLiteCache
 from tqdm import tqdm
 from os.path import dirname
 from os.path import join
@@ -36,11 +34,6 @@ class Arguments:
 class GetMusic(object):
 
     def __init__(self):
-        requests_cache.install_cache(
-            'get_music_cache', backend=SQLiteCache(
-                db_path=os.path.dirname(
-                    os.path.realpath(__file__)) + '/config/requests_cache.sqlite'))
-
         self.ytmusic = YTMusic(
             auth=os.path.dirname(
                 os.path.realpath(__file__)) + '/config/oauth.json',
@@ -55,7 +48,8 @@ class GetMusic(object):
         init_logging(
             self.downloader_settings["log_level"],
             self.downloader_settings["log_format"])
-        self.logger = logging.getLogger(__name__)
+
+        self.logger = logging.getLogger('werkzeug')
 
     def delete_old_m3u(self):
         for item in os.listdir(os.environ.get("SPOTDL_PLAYLIST_PATH")):
@@ -230,11 +224,11 @@ class GetMusic(object):
             random.shuffle(self.audio_files)
             chunks_audio_files = [self.audio_files[x:x + chunks_len]
                                   for x in range(0, len(self.audio_files), chunks_len)]
-            with tqdm(total=len(self.audio_files), desc="Updating songs metadata") as pbar:
+            with tqdm(total=len(self.audio_files), desc="Updating songs metadata") as ubar:
                 for chunk_audio in chunks_audio_files:
                     meta.meta(
                         chunk_audio, Downloader(self.downloader_settings))
-                    pbar.update(chunks_len)
+                    ubar.update(chunks_len)
 
     def download_songs(self, chunks_len=32):
         if len(self.track_list) == 0:
@@ -244,12 +238,11 @@ class GetMusic(object):
             cleaned_tracks = self.verify_songs_from_ytm(self.track_list)
             chunks_track_list = [cleaned_tracks[x:x + chunks_len]
                                  for x in range(0, len(cleaned_tracks), chunks_len)]
-            with tqdm(total=len(self.track_list), desc="Downloadings tracks") as pbar:
-                for chunk_track in tqdm(chunks_track_list,
-                                        desc="Downloadings tracks"):
+            with tqdm(total=len(self.track_list), desc="Downloadings tracks") as dbar:
+                for chunk_track in chunks_track_list:
                     download.download(
                         chunk_track, Downloader(self.downloader_settings))
-                    pbar.update(chunks_len)
+                    dbar.update(chunks_len)
 
     def get(self):
         try:
@@ -272,7 +265,7 @@ class GetMusic(object):
             self.download_songs()
 
         except Exception:
-            self.logger.exception(traceback.format_exc())
+            self.logger.error(traceback.format_exc())
         finally:
             if len(self.track_list) > 0:
                 self.verify_mp3_files(init=False)
