@@ -222,31 +222,34 @@ class GetMusic(object):
                         ", this song was already downloaded")
                     self.track_list.remove(audio.tag.comments[0].text.strip())
 
-    def update_metadata(self):
+    def update_metadata(self, chunks_len=32):
         if len(self.audio_files) == 0:
             self.logger.info(
                 "No existing songs found, skipping metadata update...")
         else:
             random.shuffle(self.audio_files)
-            chunks_audio_files = [self.audio_files[x:x + 32]
-                                  for x in range(0, len(self.audio_files), 32)]
-            for chunk_audio in tqdm(chunks_audio_files,
-                                    desc="Updating songs metadata"):
-                meta.meta(
-                    chunk_audio, Downloader(self.downloader_settings))
+            chunks_audio_files = [self.audio_files[x:x + chunks_len]
+                                  for x in range(0, len(self.audio_files), chunks_len)]
+            with tqdm(total=len(self.audio_files), desc="Updating songs metadata") as pbar:
+                for chunk_audio in chunks_audio_files:
+                    meta.meta(
+                        chunk_audio, Downloader(self.downloader_settings))
+                    pbar.update(chunks_len)
 
-    def download_songs(self):
+    def download_songs(self, chunks_len=32):
         if len(self.track_list) == 0:
             self.logger.info("No new songs found, skipping download...")
         else:
             random.shuffle(self.track_list)
             cleaned_tracks = self.verify_songs_from_ytm(self.track_list)
-            chunks_track_list = [cleaned_tracks[x:x + 32]
-                                 for x in range(0, len(cleaned_tracks), 32)]
-            for chunk_track in tqdm(chunks_track_list,
-                                    desc="Downloadings tracks"):
-                download.download(
-                    chunk_track, Downloader(self.downloader_settings))
+            chunks_track_list = [cleaned_tracks[x:x + chunks_len]
+                                 for x in range(0, len(cleaned_tracks), chunks_len)]
+            with tqdm(total=len(self.track_list), desc="Downloadings tracks") as pbar:
+                for chunk_track in tqdm(chunks_track_list,
+                                        desc="Downloadings tracks"):
+                    download.download(
+                        chunk_track, Downloader(self.downloader_settings))
+                    pbar.update(chunks_len)
 
     def get(self):
         try:
