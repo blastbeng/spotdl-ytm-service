@@ -22,6 +22,7 @@ load_dotenv(dotenv_path)
 
 eyed3.log.setLevel("ERROR")
 
+
 class Arguments:
     def __init__(self):
         self.config = True
@@ -34,6 +35,7 @@ class Arguments:
 class GetMusic(object):
 
     def __init__(self):
+
         self.ytmusic = YTMusic(
             auth=os.path.dirname(
                 os.path.realpath(__file__)) + '/config/oauth.json',

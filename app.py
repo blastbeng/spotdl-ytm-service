@@ -1,12 +1,12 @@
 import os
 import logging
+import eventlet
+eventlet.monkey_patch()
 from get_music import GetMusic
 from config import Config
 import eyed3
 import logging
-import requests_cache
-from requests_cache.backends import SQLiteCache
-from logging.handlers import RotatingFileHandler
+from time import strftime
 from tqdm import tqdm
 from os.path import dirname
 from os.path import join
@@ -20,9 +20,13 @@ from spotdl.utils.config import create_settings
 from spotdl.download.downloader import Downloader
 from spotdl.utils.logging import init_logging
 from flask_apscheduler import APScheduler
-from flask import Flask, request, send_file, Response, jsonify, make_response, after_this_request, g, render_template
-from flask_restx import Api, Resource, reqparse
-
+from flask import Flask
+from flask import request
+from flask import send_file
+from flask import Response
+from flask_restx import Api
+from flask_restx import Resource
+import threading
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -45,6 +49,7 @@ scheduler = APScheduler()
 scheduler.init_app(app)
 api = Api(app)
 downloader_ytm = GetMusic()
+
 
 @app.after_request
 def after_request(response):
@@ -71,6 +76,43 @@ class Healthcheck(Resource):
         """Healthcheck endpoint"""
         return "Ok!"
 
+
+nssched = api.namespace('scheduler', 'Scheduler APIs')
+
+@nssched.route('/run')
+class Run(Resource):
+    """Run class"""
+
+    def get(self):
+        """Run endpoint"""
+        threading.Thread(
+            target=lambda: scheduler
+            .run_job("download_music")).start()
+        return "Starting download_music job!"
+
+@nssched.route('/pause')
+class Pause(Resource):
+    """Pause class"""
+
+    def get(self):
+        """Pause endpoint"""
+        threading.Thread(
+            target=lambda: scheduler
+            .pause_job("download_music")).start()
+        return "Pausing download_music job!"
+
+@nssched.route('/resume')
+class Resume(Resource):
+    """Resume class"""
+
+    def get(self):
+        """Resume endpoint"""
+        threading.Thread(
+            target=lambda: scheduler
+            .resume_job("download_music")).start()
+        return "Resume download_music Job!"
+
+
 scheduler.add_job(
     func=downloader_ytm.get,
     trigger="interval",
@@ -82,4 +124,5 @@ scheduler.add_job(
 
 scheduler.start()
 
-scheduler.run_job("download_music")
+if __name__ == '__main__':
+    app.run()

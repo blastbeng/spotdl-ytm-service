@@ -12,9 +12,10 @@ services:
       - TZ=Europe/Rome
     image: "blastbeng/spotdl-ytm-service:1.0.0"
     restart: unless-stopped
+    ports:
+      - 5484:5484
     volumes:
       - ".env:/app/.env"
       - "./config/config.json:/home/ytmuser/.spotdl/config.json"
       - "./config:/app/config"
       - "/var/media/musica:/var/media/musica"
-    entrypoint: python -u /app/app.py

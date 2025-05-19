@@ -9,3 +9,5 @@ ytmdl
 spotdl
 eyed3
 tqdm
+gunicorn==23.0.0
+eventlet==0.37.0
