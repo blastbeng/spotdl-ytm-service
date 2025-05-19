@@ -2,9 +2,16 @@ FROM python:3.11-slim-bullseye
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        ffmpeg
+        ffmpeg \
+        locales
 
-ENV PATH="/home/uwsgi/.local/bin:${PATH}"
+RUN echo 'vm.overcommit_memory=1' >> /etc/sysctl.conf
+
+RUN sed -i '/it_IT.UTF-8/s/^# //g' /etc/locale.gen && \
+    locale-gen
+ENV LANG it_IT.UTF-8  
+ENV LANGUAGE it_IT:it  
+ENV LC_ALL it_IT.UTF-8
 
 COPY requirements.txt .
 
@@ -15,6 +22,9 @@ RUN pip3 install --default-timeout=900 -r requirements.txt
 
 WORKDIR /app
 
+COPY app.py .
+COPY config.py .
+COPY config_gunicorn.py .
 COPY get_music.py .
 COPY docker/entrypoint.sh .
 RUN chmod +x entrypoint.sh

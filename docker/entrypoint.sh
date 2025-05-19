@@ -1,2 +1,2 @@
 #!/bin/sh
-python -u /app/get_music.py scheduled
+gunicorn -k eventlet -c config_gunicorn.py app

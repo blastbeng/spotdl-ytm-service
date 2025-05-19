@@ -1,38 +1,28 @@
 import os
-import sys
 import random
 import traceback
-import time
-import datetime as dt
 import eyed3
 import logging
-import requests
 import requests_cache
-from scheduler import Scheduler
-from requests_cache.session import CachedSession
 from requests_cache.backends import SQLiteCache
 from tqdm import tqdm
 from os.path import dirname
 from os.path import join
 from dotenv import load_dotenv
-import ytmusicapi
 from ytmusicapi import YTMusic
 from ytmusicapi.auth.oauth import OAuthCredentials
-from ytmusicapi.exceptions import YTMusicServerError
-from yt_dlp.utils import _utils as ytdlp_utils
 from spotdl.utils.spotify import SpotifyClient
 from spotdl.console import download
 from spotdl.console import meta
-from spotdl.utils import search
 from spotdl.utils.config import create_settings
 from spotdl.download.downloader import Downloader
 from spotdl.utils.logging import init_logging
+
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
 eyed3.log.setLevel("ERROR")
-
 
 class Arguments:
     def __init__(self):
@@ -256,75 +246,31 @@ class GetMusic(object):
             for chunk_track in tqdm(chunks_track_list,
                                     desc="Downloadings tracks"):
                 download.download(
-                    cleaned_tracks, Downloader(self.downloader_settings))
+                    chunk_track, Downloader(self.downloader_settings))
 
     def get(self):
-        exit_code = 0
         try:
             os.chdir(os.environ.get("SPOTDL_MUSIC_PATH"))
+
             self.make_dirs()
             self.delete_old_m3u()
             self.get_liked_songs()
             self.get_playlists()
             self.get_subscriptions()
+
             if len(self.audio_files) != 0:
                 self.verify_mp3_files()
                 self.remove_empty_dirs()
 
-            try:
-                if len(self.audio_files) != 0 or len(self.track_list) != 0:
-                    SpotifyClient.init(**self.spotify_settings)
-                self.update_metadata()
-                self.download_songs()
-            except Exception as e:
-                raise e
+            if len(self.audio_files) != 0 or len(self.track_list) != 0:
+                SpotifyClient.init(**self.spotify_settings)
+
+            self.update_metadata()
+            self.download_songs()
 
         except Exception:
             self.logger.exception(traceback.format_exc())
-            exit_code = 1
         finally:
             if len(self.track_list) > 0:
                 self.verify_mp3_files(init=False)
                 self.remove_empty_dirs()
-        return exit_code
-
-
-def is_int(val):
-    try:
-        int(val)
-        return True
-    except (ValueError, TypeError):
-        return False
-
-
-def main():
-    if (len(sys.argv) == 2 and str(
-            sys.argv[1]) == "script") or len(sys.argv) == 1:
-        print('Executing in scripted mode.')
-        get_music = GetMusic()
-        sys.exit(get_music.get())
-    elif (len(sys.argv) == 2 or len(sys.argv) == 3) and str(sys.argv[1]) == "scheduled":
-        schedule = Scheduler(max_exec=1)
-        minutes = 1440
-        if len(sys.argv) == 3 and is_int(sys.argv[2]) and int(sys.argv[2]) > 0:
-            minutes = int(sys.argv[2])
-        print('Scheduling downloader every ' +
-              str(minutes) + (' minute.' if (minutes == 1) else ' minutes.'))
-        get_music = GetMusic()
-        schedule.cyclic(dt.timedelta(minutes=minutes), get_music.get)
-        while True:
-            schedule.exec_jobs()
-            time.sleep(1)
-        print('Done.')
-        sys.exit(0)
-    else:
-        print('Incorrect launch parameters')
-        print('     get_music.py             -> launch as script')
-        print('     get_music.py scripted    -> launch as script')
-        print('     get_music.py scheduled   -> launch as scheduled task every 24 hours')
-        print('     get_music.py scheduled x -> launch as scheduled task every x minutes')
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
