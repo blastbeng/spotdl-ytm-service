@@ -1,7 +1,7 @@
-import os
-import logging
 import eventlet
 eventlet.monkey_patch()
+import os
+import logging
 from get_music import GetMusic
 from config import Config
 import eyed3
