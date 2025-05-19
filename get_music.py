@@ -258,8 +258,8 @@ class GetMusic(object):
             self.get_playlists()
             self.get_subscriptions()
 
+            self.verify_mp3_files()
             if len(self.audio_files) != 0:
-                self.verify_mp3_files()
                 self.remove_empty_dirs()
 
             if len(self.audio_files) != 0 or len(self.track_list) != 0:
