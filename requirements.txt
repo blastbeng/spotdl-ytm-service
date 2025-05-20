@@ -11,3 +11,4 @@ eyed3
 tqdm
 gunicorn==23.0.0
 gevent
+emoji

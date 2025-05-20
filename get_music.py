@@ -1,11 +1,14 @@
 import os
+import re
 import random
 import traceback
 import eyed3
 import logging
+import emoji
 from tqdm import tqdm
 from os.path import dirname
 from os.path import join
+from pathlib import Path
 from dotenv import load_dotenv
 from ytmusicapi import YTMusic
 from ytmusicapi.auth.oauth import OAuthCredentials
@@ -56,7 +59,7 @@ class GetMusic(object):
     def delete_old_m3u(self):
         for item in os.listdir(os.environ.get("SPOTDL_PLAYLIST_PATH")):
             if item.endswith(".m3u"):
-                os.remove(os.path.join(m3u_path, item))
+                os.remove(os.path.join(os.environ.get("SPOTDL_PLAYLIST_PATH"), item))
 
     def make_dirs(self):
         if not os.path.exists(os.environ.get("SPOTDL_PLAYLIST_PATH")):
@@ -136,26 +139,71 @@ class GetMusic(object):
         self.get_subscriptions_tracks()
         self.get_library_songs_tracks()
 
-    def get_playlists(self):
+    def get_playlists(self, generate_m3u=False):
         library_playlists = self.ytmusic.get_library_playlists(limit=None)
-        for library_playlist in tqdm(
-                library_playlists, desc="Scanning playlists"):
-            playlist = self.ytmusic.get_playlist(
-                library_playlist['playlistId'], limit=None)
-            if 'tracks' in playlist and 'title' in playlist and (
-                    playlist['id'] is None or 'lm' != playlist['id'].lower().strip()):
-                for track in playlist['tracks']:
-                    if self.verify_track(track):
-                        self.track_list.append(
-                            self.append_track(track['videoId']))
+        audio_objects = []
+        if generate_m3u and len(library_playlists) > 0:
+            audio_objects = self.get_audio_objects()
+
+        if generate_m3u and len(audio_objects) == 0:
+            logger.warning("No existing audio files found, Skipping playlist import procedure")
+        else:
+            for library_playlist in tqdm(library_playlists, desc='Importing playlists' if generate_m3u else 'Scanning playlists'):
+                playlist = self.ytmusic.get_playlist(
+                    library_playlist['playlistId'], limit=None)
+                if 'tracks' in playlist and 'title' in playlist and (
+                        playlist['id'] is None or 'lm' != playlist['id'].lower().strip()):
+                    m3u_path = None
+                    if generate_m3u:
+                        m3u_path = os.environ.get("SPOTDL_PLAYLIST_PATH") + emoji.replace_emoji(playlist['title'], '').replace("/", " ").replace("\\"," ").strip() + ".m3u"
+                        with open(m3u_path, "w") as m3u_file:
+                            m3u_file.write("#EXTM3U\n")
+                    for track in playlist['tracks']:
+                        if self.verify_track(track):
+                            track = self.append_track(track['videoId'])
+                            if generate_m3u and m3u_path is not None:
+                                audio_dict = self.search_for_track(track, audio_objects)
+                                if audio_dict is not None:
+                                    with open(m3u_path, "a") as m3u_file:
+                                        record = f"#EXTINF:{audio_dict['duration']},{audio_dict['artist']}-{audio_dict['album']}-{audio_dict['title']}.{Path(audio_dict['path']).suffix}"
+                                        m3u_file.write("\n"+record+"\n")
+                                        m3u_file.write(audio_dict['path']+"\n")
+                            else:
+                                self.track_list.append(track)
+
+    def search_for_track(self, track, audio_objects):
+        for audio_dict in audio_objects:
+            if audio_dict["url"] == track:
+                return audio_dict
+        return None
+               
 
     def get_audio_files(self):
         self.audio_files = []
-        for subdir, dirs, files in os.walk(
-                os.environ.get("SPOTDL_MUSIC_PATH")):
+        for subdir, dirs, files in tqdm(os.walk(
+                os.environ.get("SPOTDL_MUSIC_PATH")), desc="Reading existing files"):
             for file in files:
                 if file.endswith('.mp3'):
                     self.audio_files.append(os.path.join(subdir, file))
+
+    def get_audio_objects(self):
+        audio_objects = []
+        self.get_audio_files()
+        for audio_file_path in tqdm(self.audio_files, desc="Reading audio tags"):
+            if audio_file_path.endswith('.mp3'):
+                audio = eyed3.load(audio_file_path)
+                if audio is None:
+                    self.delete_audio_file(audio_file_path)
+                elif audio.tag.comments is not None and len(audio.tag.comments) != 0:
+                    audio_dict = {}
+                    audio_dict["url"] = audio.tag.comments[0].text.strip()
+                    audio_dict["path"] = audio.path
+                    audio_dict["duration"] = audio.info.time_secs
+                    audio_dict["artist"] = audio.tag.artist
+                    audio_dict["title"] = audio.tag.title
+                    audio_dict["album"] = audio.tag.album
+                    audio_objects.append(audio_dict)
+        return audio_objects
 
     def append_track(self, videoId):
         return ("https://music.youtube.com/watch?v=" + videoId).strip()
@@ -172,7 +220,7 @@ class GetMusic(object):
                     self.remove_empty_dirs(path=fullpath)
 
         files = os.listdir(path)
-        if len(files) == 0 and path != os.environ.get("SPOTDL_MUSIC_PATH"):
+        if len(files) == 0 and path != os.environ.get("SPOTDL_MUSIC_PATH") and path != os.environ.get("SPOTDL_PLAYLIST_PATH"):
             os.rmdir(path)
 
     def verify_songs_from_ytm(self, tracks):
@@ -279,6 +327,9 @@ class GetMusic(object):
                 self.remove_empty_dirs()
 
             self.download_songs()
+
+            self.delete_old_m3u()
+            self.get_playlists(generate_m3u=True)
 
         except Exception:
             self.logger.error(traceback.format_exc())
