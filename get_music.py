@@ -285,7 +285,8 @@ class GetMusic(object):
         finally:
             if len(self.track_list) > 0:
                 self.verify_mp3_files(init=False)
-                self.remove_empty_dirs()
+                if len(self.audio_files) != 0:
+                    self.remove_empty_dirs()
             self.track_list = []
             self.audio_files = []
             self.logger.info("DONE - get_music.get")
