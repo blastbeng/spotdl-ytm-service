@@ -330,7 +330,7 @@ class GetMusic(object):
         try:
             self.logger.info("START - get_music.playlist")
             self.delete_old_m3u()
-            self.get_playlists([], generate_m3u=True)
+            self.get_playlists(generate_m3u=True)
         except Exception:
             self.logger.error(traceback.format_exc())
             self.logger.info("DONE - get_music.playlist")
