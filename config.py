@@ -5,5 +5,5 @@ class Config(object):
     SCHEDULER_API_PREFIX = "/api/v1/scheduler"
     SCHEDULER_EXECUTORS = {
         "default": {
-            "type": "threadpool",
-            "max_workers": 1}}
+            "type": "processpool",
+            "max_workers": 4}}
