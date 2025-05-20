@@ -146,7 +146,8 @@ class GetMusic(object):
                     playlist['id'] is None or 'lm' != playlist['id'].lower().strip()):
                 for track in playlist['tracks']:
                     if self.verify_track(track):
-                        self.track_list.append(self.append_track(track['videoId']))
+                        self.track_list.append(
+                            self.append_track(track['videoId']))
 
     def get_audio_files(self):
         self.audio_files = []
@@ -155,7 +156,7 @@ class GetMusic(object):
             for file in files:
                 if file.endswith('.mp3'):
                     self.audio_files.append(os.path.join(subdir, file))
-                    
+
     def append_track(self, videoId):
         return ("https://music.youtube.com/watch?v=" + videoId).strip()
 
@@ -194,7 +195,6 @@ class GetMusic(object):
         os.remove(audio_file_path)
         self.audio_files.remove(audio_file_path)
 
-
     def verify_mp3_files(self, init=True):
         self.get_audio_files()
         for audio_file_path in tqdm(
@@ -223,7 +223,6 @@ class GetMusic(object):
                         audio_file_path +
                         ", this song was already downloaded")
                     self.track_list.remove(audio.tag.comments[0].text.strip())
-
 
     def update_metadata(self, chunks_len=32):
         if len(self.audio_files) == 0:

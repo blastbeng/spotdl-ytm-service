@@ -66,6 +66,7 @@ def after_request(response):
 
 nsutils = api.namespace('utils', 'Utils APIs')
 
+
 @nsutils.route('/healthcheck')
 class Healthcheck(Resource):
     """Healthcheck class"""
@@ -76,6 +77,7 @@ class Healthcheck(Resource):
 
 
 nsdownload = api.namespace('download', 'Downloader APIs')
+
 
 @nsdownload.route('/run')
 class Run(Resource):
@@ -88,6 +90,7 @@ class Run(Resource):
             .run_job("download_music")).start()
         return "Starting download_music job!"
 
+
 @nsdownload.route('/pause')
 class Pause(Resource):
     """Pause class"""
@@ -99,6 +102,7 @@ class Pause(Resource):
             .pause_job("download_music")).start()
         return "Pausing download_music job!"
 
+
 @nsdownload.route('/resume')
 class Resume(Resource):
     """Resume class"""
@@ -109,8 +113,10 @@ class Resume(Resource):
             target=lambda: scheduler
             .resume_job("download_music")).start()
         return "Resume download_music Job!"
-        
+
+
 nsmetadata = api.namespace('metadata', 'Metadata APIs')
+
 
 @nsmetadata.route('/run')
 class Run(Resource):
@@ -123,6 +129,7 @@ class Run(Resource):
             .run_job("update_metadata")).start()
         return "Starting update_metadata job!"
 
+
 @nsmetadata.route('/pause')
 class Pause(Resource):
     """Pause class"""
@@ -133,6 +140,7 @@ class Pause(Resource):
             target=lambda: scheduler
             .pause_job("update_metadata")).start()
         return "Pausing update_metadata job!"
+
 
 @nsmetadata.route('/resume')
 class Resume(Resource):
