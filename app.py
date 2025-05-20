@@ -154,6 +154,45 @@ class Resume(Resource):
         return "Resume update_metadata Job!"
 
 
+nsplaylist = api.namespace('playlist', 'Playlist APIs')
+
+
+@nsplaylist.route('/run')
+class Run(Resource):
+    """Run class"""
+
+    def get(self):
+        """Run endpoint"""
+        threading.Thread(
+            target=lambda: scheduler
+            .run_job("import_playlists")).start()
+        return "Starting import_playlists job!"
+
+
+@nsplaylist.route('/pause')
+class Pause(Resource):
+    """Pause class"""
+
+    def get(self):
+        """Pause endpoint"""
+        threading.Thread(
+            target=lambda: scheduler
+            .pause_job("import_playlists")).start()
+        return "Pausing import_playlists job!"
+
+
+@nsplaylist.route('/resume')
+class Resume(Resource):
+    """Resume class"""
+
+    def get(self):
+        """Resume endpoint"""
+        threading.Thread(
+            target=lambda: scheduler
+            .resume_job("import_playlists")).start()
+        return "Resume import_playlists Job!"
+
+
 scheduler.add_job(
     func=downloader_ytm.get,
     trigger="interval",
@@ -168,6 +207,15 @@ scheduler.add_job(
     trigger="interval",
     minutes=int(os.environ.get("SCHEDULER_MINUTES", 7200)),
     id="update_metadata",
+    replace_existing=True,
+    max_instances=1
+)
+
+scheduler.add_job(
+    func=downloader_ytm.playlist,
+    trigger="interval",
+    minutes=int(os.environ.get("SCHEDULER_MINUTES", 4320)),
+    id="import_playlists",
     replace_existing=True,
     max_instances=1
 )

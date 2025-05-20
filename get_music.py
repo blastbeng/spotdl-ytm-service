@@ -45,8 +45,6 @@ class GetMusic(object):
             oauth_credentials=OAuthCredentials(
                 client_id=os.environ.get("YT_CLIENT_ID"),
                 client_secret=os.environ.get("YT_SECRET_ID")))
-        self.track_list = []
-        self.audio_files = []
         self.spotify_settings, self.downloader_settings, web_settings = create_settings(
             Arguments())
 
@@ -65,7 +63,7 @@ class GetMusic(object):
         if not os.path.exists(os.environ.get("SPOTDL_PLAYLIST_PATH")):
             os.makedirs(os.environ.get("SPOTDL_PLAYLIST_PATH"))
 
-    def get_subscriptions_tracks(self):
+    def get_subscriptions_tracks(self, track_list):
         liked_suscriptions = self.ytmusic.get_library_subscriptions(limit=None)
         for subscription in tqdm(liked_suscriptions,
                                  desc="Scanning suscriptions"):
@@ -81,8 +79,8 @@ class GetMusic(object):
                                 browseId=artist_album['browseId'])
                             if 'tracks' in album_multi:
                                 for track in album_multi['tracks']:
-                                    if self.verify_track(track):
-                                        self.track_list.append(
+                                    if self.verify_track(track, track_list):
+                                        track_list.append(
                                             self.append_track(track['videoId']))
                 if 'singles' in artist and 'browseId' in artist[
                         'singles'] and 'params' in artist['singles']:
@@ -95,19 +93,21 @@ class GetMusic(object):
                             browseId=single['browseId'])
                         if 'tracks' in album_single:
                             for track in album_single['tracks']:
-                                if self.verify_track(track):
-                                    self.track_list.append(
+                                if self.verify_track(track, track_list):
+                                    track_list.append(
                                         self.append_track(track['videoId']))
+        return track_list
 
-    def get_library_songs_tracks(self):
+    def get_library_songs_tracks(self, track_list):
         library_songs = self.ytmusic.get_library_songs(limit=None)
         for track in tqdm(library_songs, desc="Scanning library songs"):
-            if self.verify_track(track):
-                self.track_list.append(self.append_track(track['videoId']))
+            if self.verify_track(track, track_list):
+                track_list.append(self.append_track(track['videoId']))
+        return track_list
 
-    def verify_track(self, track):
+    def verify_track(self, track, track_list):
         if 'videoId' in track and track['videoId'] is not None:
-            if (self.append_track(track['videoId'])) in self.track_list:
+            if (self.append_track(track['videoId'])) in track_list:
                 return False
             if 'videoType' not in track or (
                     track['videoType'] != 'MUSIC_VIDEO_TYPE_ATV'):
@@ -121,25 +121,26 @@ class GetMusic(object):
             return True
         return False
 
-    def get_history(self):
+    def get_history(self, track_list):
         history_songs = self.ytmusic.get_history()
         for track in tqdm(history_songs, desc="Scanning history songs"):
-            if self.verify_track(track):
-                self.track_list.append(self.append_track(track['videoId']))
+            if self.verify_track(track, track_list):
+                track_list.append(self.append_track(track['videoId']))
 
-    def get_liked_songs(self):
+    def get_liked_songs(self, track_list):
         liked_songs = self.ytmusic.get_liked_songs(limit=None)
         if 'tracks' in liked_songs:
             for track in tqdm(
                     liked_songs['tracks'], desc="Scanning liked songs"):
-                if self.verify_track(track):
-                    self.track_list.append(self.append_track(track['videoId']))
+                if self.verify_track(track, track_list):
+                    track_list.append(self.append_track(track['videoId']))
+        return track_list
 
     def get_subscriptions(self):
-        self.get_subscriptions_tracks()
-        self.get_library_songs_tracks()
+        track_list = self.get_subscriptions_tracks(track_list)
+        track_list = self.get_library_songs_tracks(track_list)
 
-    def get_playlists(self, generate_m3u=False):
+    def get_playlists(self, track_list, generate_m3u=False):
         library_playlists = self.ytmusic.get_library_playlists(limit=None)
         audio_objects = []
         if generate_m3u and len(library_playlists) > 0:
@@ -159,7 +160,7 @@ class GetMusic(object):
                         with open(m3u_path, "w") as m3u_file:
                             m3u_file.write("#EXTM3U\n")
                     for track in playlist['tracks']:
-                        if self.verify_track(track):
+                        if self.verify_track(track, track_list):
                             track = self.append_track(track['videoId'])
                             if generate_m3u and m3u_path is not None:
                                 audio_dict = self.search_for_track(track, audio_objects)
@@ -167,9 +168,10 @@ class GetMusic(object):
                                     with open(m3u_path, "a") as m3u_file:
                                         record = f"#EXTINF:{audio_dict['duration']},{audio_dict['artist']}-{audio_dict['album']}-{audio_dict['title']}.{Path(audio_dict['path']).suffix}"
                                         m3u_file.write("\n"+record+"\n")
-                                        m3u_file.write(audio_dict['path']+"\n")
+                                        m3u_file.write(audio_dict['path'].replace(os.environ.get("SPOTDL_MUSIC_PATH"),"./")+"\n")
                             else:
-                                self.track_list.append(track)
+                                track_list.append(track)
+        return track_list
 
     def search_for_track(self, track, audio_objects):
         for audio_dict in audio_objects:
@@ -179,17 +181,18 @@ class GetMusic(object):
                
 
     def get_audio_files(self):
-        self.audio_files = []
+        audio_files = []
         for subdir, dirs, files in tqdm(os.walk(
                 os.environ.get("SPOTDL_MUSIC_PATH")), desc="Reading existing files"):
             for file in files:
                 if file.endswith('.mp3'):
-                    self.audio_files.append(os.path.join(subdir, file))
+                    audio_files.append(os.path.join(subdir, file))
+        return audio_files
 
     def get_audio_objects(self):
         audio_objects = []
-        self.get_audio_files()
-        for audio_file_path in tqdm(self.audio_files, desc="Reading audio tags"):
+        audio_files = self.get_audio_files()
+        for audio_file_path in tqdm(audio_files, desc="Reading audio tags"):
             if audio_file_path.endswith('.mp3'):
                 audio = eyed3.load(audio_file_path)
                 if audio is None:
@@ -235,21 +238,22 @@ class GetMusic(object):
                 self.tracks.remove(audio_file_path)
         return tracks
 
-    def delete_audio_file(self, audio_file_path):
+    def delete_audio_file(self, audio_file_path, audio_files):
         self.logger.warning(
             "Deleting " +
             audio_file_path +
             ", corrupted audio file")
         os.remove(audio_file_path)
-        self.audio_files.remove(audio_file_path)
+        audio_files.remove(audio_file_path)
+        return audio_files
 
-    def verify_mp3_files(self, init=True):
-        self.get_audio_files()
+    def verify_mp3_files(self, track_list, init=True):
+        audio_files = self.get_audio_files()
         for audio_file_path in tqdm(
-                list(self.audio_files), desc="Performing corrupted file check"):
+                list(audio_files), desc="Performing corrupted file check"):
             audio = eyed3.load(audio_file_path)
             if audio is None:
-                self.delete_audio_file(audio_file_path)
+                audio_files = self.delete_audio_file(audio_file_path, audio_files)
             elif init:
                 if audio.tag.comments is None or len(audio.tag.comments) == 0:
                     self.logger.warning(
@@ -257,46 +261,47 @@ class GetMusic(object):
                         audio_file_path +
                         ", no download link found for this song")
                     os.remove(audio_file_path)
-                    self.audio_files.remove(audio_file_path)
-                elif audio.tag.comments[0].text.strip() not in self.track_list:
+                    audio_files.remove(audio_file_path)
+                elif audio.tag.comments[0].text.strip() not in track_list:
                     self.logger.debug(
                         "Deleting " +
                         audio_file_path +
                         ", this song is not present inside the requested track list")
                     os.remove(audio_file_path)
-                    self.audio_files.remove(audio_file_path)
-                elif audio.tag.comments[0].text.strip() in self.track_list:
+                    audio_files.remove(audio_file_path)
+                elif audio.tag.comments[0].text.strip() in track_list:
                     self.logger.debug(
                         "Skipping " +
                         audio_file_path +
                         ", this song was already downloaded")
-                    self.track_list.remove(audio.tag.comments[0].text.strip())
+                    track_list.remove(audio.tag.comments[0].text.strip())
+        return audio_files, track_list
 
-    def update_metadata(self, chunks_len=32):
-        if len(self.audio_files) == 0:
+    def update_metadata(self, audio_files, chunks_len=32):
+        if len(audio_files) == 0:
             self.logger.info(
                 "No existing songs found, skipping metadata update...")
         else:
             SpotifyClient.init(**self.spotify_settings)
-            random.shuffle(self.audio_files)
-            chunks_audio_files = [self.audio_files[x:x + chunks_len]
-                                  for x in range(0, len(self.audio_files), chunks_len)]
-            with tqdm(total=len(self.audio_files), desc="Updating songs metadata") as ubar:
+            random.shuffle(audio_files)
+            chunks_audio_files = [audio_files[x:x + chunks_len]
+                                  for x in range(0, len(audio_files), chunks_len)]
+            with tqdm(total=len(audio_files), desc="Updating songs metadata") as ubar:
                 for chunk_audio in chunks_audio_files:
                     meta.meta(
                         chunk_audio, Downloader(self.downloader_settings))
                     ubar.update(chunks_len)
 
-    def download_songs(self, chunks_len=32):
-        if len(self.track_list) == 0:
+    def download_songs(self, track_list, chunks_len=32):
+        if len(track_list) == 0:
             self.logger.info("No new songs found, skipping download...")
         else:
             SpotifyClient.init(**self.spotify_settings)
-            random.shuffle(self.track_list)
-            cleaned_tracks = self.verify_songs_from_ytm(self.track_list)
+            random.shuffle(track_list)
+            cleaned_tracks = self.verify_songs_from_ytm(track_list)
             chunks_track_list = [cleaned_tracks[x:x + chunks_len]
                                  for x in range(0, len(cleaned_tracks), chunks_len)]
-            with tqdm(total=len(self.track_list), desc="Downloadings tracks") as dbar:
+            with tqdm(total=len(track_list), desc="Downloadings tracks") as dbar:
                 for chunk_track in chunks_track_list:
                     download.download(
                         chunk_track, Downloader(self.downloader_settings))
@@ -304,40 +309,43 @@ class GetMusic(object):
 
     def meta(self):
         try:
-            self.get_audio_files()
-            self.update_metadata()
+            self.logger.info("START - get_music.meta")
+            self.update_metadata(self.get_audio_files())
         except Exception:
             self.logger.error(traceback.format_exc())
+            self.logger.info("DONE - get_music.meta")
+
+    def playlist(self):
+        try:
+            self.logger.info("START - get_music.playlist")
+            self.delete_old_m3u()
+            self.get_playlists([], generate_m3u=True)
+        except Exception:
+            self.logger.error(traceback.format_exc())
+            self.logger.info("DONE - get_music.playlist")
 
     def get(self):
         try:
             self.logger.info("START - get_music.get")
             os.chdir(os.environ.get("SPOTDL_MUSIC_PATH"))
 
-            self.track_list = []
-            self.audio_files = []
+            track_list = []
+            audio_files = []
 
             self.make_dirs()
-            self.get_liked_songs()
-            self.get_playlists()
-            self.get_subscriptions()
+            track_list = self.get_liked_songs(track_list)
+            track_list = self.get_playlists(track_list)
+            track_list = self.get_subscriptions(track_list)
 
-            self.verify_mp3_files()
-            if len(self.audio_files) != 0:
+            audio_files, track_list = self.verify_mp3_files(track_list)
+            if len(audio_files) != 0:
                 self.remove_empty_dirs()
 
-            self.download_songs()
-
-            self.delete_old_m3u()
-            self.get_playlists(generate_m3u=True)
+            download_songs(track_list)
 
         except Exception:
             self.logger.error(traceback.format_exc())
         finally:
-            if len(self.track_list) > 0:
-                self.verify_mp3_files(init=False)
-                if len(self.audio_files) != 0:
-                    self.remove_empty_dirs()
-            self.track_list = []
-            self.audio_files = []
+            self.verify_mp3_files([], init=False)
+            self.remove_empty_dirs()
             self.logger.info("DONE - get_music.get")
