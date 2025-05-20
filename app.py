@@ -75,9 +75,9 @@ class Healthcheck(Resource):
         return "Ok!"
 
 
-nssched = api.namespace('scheduler', 'Scheduler APIs')
+nsdownload = api.namespace('download', 'Downloader APIs')
 
-@nssched.route('/run')
+@nsdownload.route('/run')
 class Run(Resource):
     """Run class"""
 
@@ -88,7 +88,7 @@ class Run(Resource):
             .run_job("download_music")).start()
         return "Starting download_music job!"
 
-@nssched.route('/pause')
+@nsdownload.route('/pause')
 class Pause(Resource):
     """Pause class"""
 
@@ -99,7 +99,7 @@ class Pause(Resource):
             .pause_job("download_music")).start()
         return "Pausing download_music job!"
 
-@nssched.route('/resume')
+@nsdownload.route('/resume')
 class Resume(Resource):
     """Resume class"""
 
@@ -109,6 +109,41 @@ class Resume(Resource):
             target=lambda: scheduler
             .resume_job("download_music")).start()
         return "Resume download_music Job!"
+        
+nsmetadata = api.namespace('metadata', 'Metadata APIs')
+
+@nsmetadata.route('/run')
+class Run(Resource):
+    """Run class"""
+
+    def get(self):
+        """Run endpoint"""
+        threading.Thread(
+            target=lambda: scheduler
+            .run_job("update_metadata")).start()
+        return "Starting update_metadata job!"
+
+@nsmetadata.route('/pause')
+class Pause(Resource):
+    """Pause class"""
+
+    def get(self):
+        """Pause endpoint"""
+        threading.Thread(
+            target=lambda: scheduler
+            .pause_job("update_metadata")).start()
+        return "Pausing update_metadata job!"
+
+@nsmetadata.route('/resume')
+class Resume(Resource):
+    """Resume class"""
+
+    def get(self):
+        """Resume endpoint"""
+        threading.Thread(
+            target=lambda: scheduler
+            .resume_job("update_metadata")).start()
+        return "Resume update_metadata Job!"
 
 
 scheduler.add_job(
@@ -116,6 +151,15 @@ scheduler.add_job(
     trigger="interval",
     minutes=int(os.environ.get("SCHEDULER_MINUTES", 1440)),
     id="download_music",
+    replace_existing=True,
+    max_instances=1
+)
+
+scheduler.add_job(
+    func=downloader_ytm.meta,
+    trigger="interval",
+    minutes=int(os.environ.get("SCHEDULER_MINUTES", 7200)),
+    id="update_metadata",
     replace_existing=True,
     max_instances=1
 )

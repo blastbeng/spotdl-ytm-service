@@ -153,7 +153,7 @@ class GetMusic(object):
         for subdir, dirs, files in os.walk(
                 os.environ.get("SPOTDL_MUSIC_PATH")):
             for file in files:
-                if file.endswith('.mp3') or '.mp3.' in file:
+                if file.endswith('.mp3'):
                     self.audio_files.append(os.path.join(subdir, file))
                     
     def append_track(self, videoId):
@@ -230,6 +230,7 @@ class GetMusic(object):
             self.logger.info(
                 "No existing songs found, skipping metadata update...")
         else:
+            SpotifyClient.init(**self.spotify_settings)
             random.shuffle(self.audio_files)
             chunks_audio_files = [self.audio_files[x:x + chunks_len]
                                   for x in range(0, len(self.audio_files), chunks_len)]
@@ -243,6 +244,7 @@ class GetMusic(object):
         if len(self.track_list) == 0:
             self.logger.info("No new songs found, skipping download...")
         else:
+            SpotifyClient.init(**self.spotify_settings)
             random.shuffle(self.track_list)
             cleaned_tracks = self.verify_songs_from_ytm(self.track_list)
             chunks_track_list = [cleaned_tracks[x:x + chunks_len]
@@ -252,6 +254,13 @@ class GetMusic(object):
                     download.download(
                         chunk_track, Downloader(self.downloader_settings))
                     dbar.update(chunks_len)
+
+    def meta(self):
+        try:
+            self.get_audio_files()
+            self.update_metadata()
+        except Exception:
+            self.logger.error(traceback.format_exc())
 
     def get(self):
         try:
@@ -270,10 +279,6 @@ class GetMusic(object):
             if len(self.audio_files) != 0:
                 self.remove_empty_dirs()
 
-            if len(self.audio_files) != 0 or len(self.track_list) != 0:
-                SpotifyClient.init(**self.spotify_settings)
-
-            self.update_metadata()
             self.download_songs()
 
         except Exception:
