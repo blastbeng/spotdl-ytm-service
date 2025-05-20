@@ -4,11 +4,11 @@ backlog = 2048
 workers = 1
 worker_class = 'gthread'
 worker_connections = 1000
-timeout = 30
+timeout = 43200
 keepalive = 2
 spew = False
 capture_output = True
-threads = 10
+threads = 4
 
 daemon = False
 

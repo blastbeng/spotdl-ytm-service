@@ -146,9 +146,16 @@ class GetMusic(object):
                     playlist['id'] is None or 'lm' != playlist['id'].lower().strip()):
                 for track in playlist['tracks']:
                     if self.verify_track(track):
-                        self.track_list.append(
-                            self.append_track(track['videoId']))
+                        self.track_list.append(self.append_track(track['videoId']))
 
+    def get_audio_files(self):
+        self.audio_files = []
+        for subdir, dirs, files in os.walk(
+                os.environ.get("SPOTDL_MUSIC_PATH")):
+            for file in files:
+                if file.endswith('.mp3') or '.mp3.' in file:
+                    self.audio_files.append(os.path.join(subdir, file))
+                    
     def append_track(self, videoId):
         return ("https://music.youtube.com/watch?v=" + videoId).strip()
 
@@ -179,24 +186,23 @@ class GetMusic(object):
                 self.tracks.remove(audio_file_path)
         return tracks
 
-    def verify_mp3_files(self, init=True):
-        for subdir, dirs, files in os.walk(
-                os.environ.get("SPOTDL_MUSIC_PATH")):
-            for file in files:
-                if file.endswith('.mp3') or '.mp3.' in file:
-                    self.audio_files.append(os.path.join(subdir, file))
+    def delete_audio_file(self, audio_file_path):
+        self.logger.warning(
+            "Deleting " +
+            audio_file_path +
+            ", corrupted audio file")
+        os.remove(audio_file_path)
+        self.audio_files.remove(audio_file_path)
 
+
+    def verify_mp3_files(self, init=True):
+        self.get_audio_files()
         for audio_file_path in tqdm(
                 list(self.audio_files), desc="Performing corrupted file check"):
             audio = eyed3.load(audio_file_path)
             if audio is None:
-                self.logger.warning(
-                    "Deleting " +
-                    audio_file_path +
-                    ", corrupted audio file")
-                os.remove(audio_file_path)
-                self.audio_files.remove(audio_file_path)
-            if init:
+                self.delete_audio_file(audio_file_path)
+            elif init:
                 if audio.tag.comments is None or len(audio.tag.comments) == 0:
                     self.logger.warning(
                         "Deleting " +
@@ -217,6 +223,7 @@ class GetMusic(object):
                         audio_file_path +
                         ", this song was already downloaded")
                     self.track_list.remove(audio.tag.comments[0].text.strip())
+
 
     def update_metadata(self, chunks_len=32):
         if len(self.audio_files) == 0:
@@ -248,10 +255,13 @@ class GetMusic(object):
 
     def get(self):
         try:
+            self.logger.info("START - get_music.get")
             os.chdir(os.environ.get("SPOTDL_MUSIC_PATH"))
 
+            self.track_list = []
+            self.audio_files = []
+
             self.make_dirs()
-            self.delete_old_m3u()
             self.get_liked_songs()
             self.get_playlists()
             self.get_subscriptions()
@@ -272,3 +282,6 @@ class GetMusic(object):
             if len(self.track_list) > 0:
                 self.verify_mp3_files(init=False)
                 self.remove_empty_dirs()
+            self.track_list = []
+            self.audio_files = []
+            self.logger.info("DONE - get_music.get")
