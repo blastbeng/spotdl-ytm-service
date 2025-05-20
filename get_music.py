@@ -63,7 +63,8 @@ class GetMusic(object):
         if not os.path.exists(os.environ.get("SPOTDL_PLAYLIST_PATH")):
             os.makedirs(os.environ.get("SPOTDL_PLAYLIST_PATH"))
 
-    def get_subscriptions_tracks(self, track_list):
+    def get_subscriptions_tracks(self):
+        track_list = []
         liked_suscriptions = self.ytmusic.get_library_subscriptions(limit=None)
         for subscription in tqdm(liked_suscriptions,
                                  desc="Scanning suscriptions"):
@@ -98,7 +99,8 @@ class GetMusic(object):
                                         self.append_track(track['videoId']))
         return track_list
 
-    def get_library_songs_tracks(self, track_list):
+    def get_library_songs_tracks(self):
+        track_list = []
         library_songs = self.ytmusic.get_library_songs(limit=None)
         for track in tqdm(library_songs, desc="Scanning library songs"):
             if self.verify_track(track, track_list):
@@ -121,13 +123,16 @@ class GetMusic(object):
             return True
         return False
 
-    def get_history(self, track_list):
+    def get_history(self):
+        track_list=[]
         history_songs = self.ytmusic.get_history()
         for track in tqdm(history_songs, desc="Scanning history songs"):
             if self.verify_track(track, track_list):
                 track_list.append(self.append_track(track['videoId']))
+        return track_list
 
-    def get_liked_songs(self, track_list):
+    def get_liked_songs(self):
+        track_list=[]
         liked_songs = self.ytmusic.get_liked_songs(limit=None)
         if 'tracks' in liked_songs:
             for track in tqdm(
@@ -136,11 +141,8 @@ class GetMusic(object):
                     track_list.append(self.append_track(track['videoId']))
         return track_list
 
-    def get_subscriptions(self):
-        track_list = self.get_subscriptions_tracks(track_list)
-        track_list = self.get_library_songs_tracks(track_list)
-
-    def get_playlists(self, track_list, generate_m3u=False):
+    def get_playlists(self, generate_m3u=False):
+        track_list=[]
         library_playlists = self.ytmusic.get_library_playlists(limit=None)
         audio_objects = []
         if generate_m3u and len(library_playlists) > 0:
@@ -307,6 +309,15 @@ class GetMusic(object):
                         chunk_track, Downloader(self.downloader_settings))
                     dbar.update(chunks_len)
 
+    def get_tracks(self):
+        track_list = []
+        track_list += self.get_history()
+        track_list += self.get_liked_songs()
+        track_list += self.get_playlists()
+        track_list += self.get_subscriptions_tracks()
+        track_list += self.get_library_songs_tracks()
+        return track_list
+
     def meta(self):
         try:
             self.logger.info("START - get_music.meta")
@@ -329,19 +340,14 @@ class GetMusic(object):
             self.logger.info("START - get_music.get")
             os.chdir(os.environ.get("SPOTDL_MUSIC_PATH"))
 
-            track_list = []
-            audio_files = []
-
             self.make_dirs()
-            track_list = self.get_liked_songs(track_list)
-            track_list = self.get_playlists(track_list)
-            track_list = self.get_subscriptions(track_list)
+            track_list = self.get_tracks()
 
             audio_files, track_list = self.verify_mp3_files(track_list)
             if len(audio_files) != 0:
                 self.remove_empty_dirs()
 
-            download_songs(track_list)
+            self.download_songs(track_list)
 
         except Exception:
             self.logger.error(traceback.format_exc())
