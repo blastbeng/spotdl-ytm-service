@@ -306,7 +306,7 @@ class GetMusic(object):
 
     def get_tracks(self):
         track_list = []
-        track_list = self.get_history(track_list)
+        #track_list = self.get_history(track_list)
         track_list = self.get_liked_songs(track_list)
         track_list = self.get_playlists(track_list)
         track_list = self.get_subscriptions_tracks(track_list)
