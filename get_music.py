@@ -18,6 +18,7 @@ from spotdl.console import meta
 from spotdl.utils.config import create_settings
 from spotdl.download.downloader import Downloader
 from spotdl.utils.logging import init_logging
+from spotdl.utils.spotify import SpotifyError
 
 
 dotenv_path = join(dirname(__file__), '.env')
@@ -274,12 +275,18 @@ class GetMusic(object):
                     track_list.remove(audio.tag.comments[0].text.strip())
         return audio_files, track_list
 
+    def init_spotify(self):
+        try:
+            SpotifyClient.init(**self.spotify_settings)
+        except SpotifyError:
+            pass
+
     def update_metadata(self, audio_files, chunks_len=32):
         if len(audio_files) == 0:
             self.logger.info(
                 "No existing songs found, skipping metadata update...")
         else:
-            SpotifyClient.init(**self.spotify_settings)
+            self.init_spotify()
             random.shuffle(audio_files)
             chunks_audio_files = [audio_files[x:x + chunks_len]
                                   for x in range(0, len(audio_files), chunks_len)]
@@ -293,7 +300,7 @@ class GetMusic(object):
         if len(track_list) == 0:
             self.logger.info("No new songs found, skipping download...")
         else:
-            SpotifyClient.init(**self.spotify_settings)
+            self.init_spotify()
             random.shuffle(track_list)
             cleaned_tracks = self.verify_songs_from_ytm(track_list)
             chunks_track_list = [cleaned_tracks[x:x + chunks_len]
