@@ -3,7 +3,8 @@ FROM python:3.11-slim-bullseye
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         ffmpeg \
-        locales
+        locales \
+        curl
 
 RUN echo 'vm.overcommit_memory=1' >> /etc/sysctl.conf
 

@@ -80,11 +80,11 @@ nsdownload = api.namespace('download', 'Downloader APIs')
 
 
 @nsdownload.route('/run')
-class Run(Resource):
-    """Run class"""
+class RunDownload(Resource):
+    """Run Download class"""
 
     def get(self):
-        """Run endpoint"""
+        """Run Download endpoint"""
         threading.Thread(
             target=lambda: scheduler
             .run_job("download_music")).start()
@@ -92,11 +92,11 @@ class Run(Resource):
 
 
 @nsdownload.route('/pause')
-class Pause(Resource):
-    """Pause class"""
+class PauseDownload(Resource):
+    """Pause Download class"""
 
     def get(self):
-        """Pause endpoint"""
+        """Pause Download endpoint"""
         threading.Thread(
             target=lambda: scheduler
             .pause_job("download_music")).start()
@@ -104,11 +104,11 @@ class Pause(Resource):
 
 
 @nsdownload.route('/resume')
-class Resume(Resource):
-    """Resume class"""
+class ResumeDownload(Resource):
+    """Resume Download class"""
 
     def get(self):
-        """Resume endpoint"""
+        """Resume Download endpoint"""
         threading.Thread(
             target=lambda: scheduler
             .resume_job("download_music")).start()
@@ -119,11 +119,11 @@ nsmetadata = api.namespace('metadata', 'Metadata APIs')
 
 
 @nsmetadata.route('/run')
-class Run(Resource):
-    """Run class"""
+class RunMetadata(Resource):
+    """Run Metadata class"""
 
     def get(self):
-        """Run endpoint"""
+        """Run Metadata endpoint"""
         threading.Thread(
             target=lambda: scheduler
             .run_job("update_metadata")).start()
@@ -131,11 +131,11 @@ class Run(Resource):
 
 
 @nsmetadata.route('/pause')
-class Pause(Resource):
-    """Pause class"""
+class PauseMetadata(Resource):
+    """Pause Metadata class"""
 
     def get(self):
-        """Pause endpoint"""
+        """Pause Metadata endpoint"""
         threading.Thread(
             target=lambda: scheduler
             .pause_job("update_metadata")).start()
@@ -143,11 +143,11 @@ class Pause(Resource):
 
 
 @nsmetadata.route('/resume')
-class Resume(Resource):
-    """Resume class"""
+class ResumeMetadata(Resource):
+    """Resume Metadata class"""
 
     def get(self):
-        """Resume endpoint"""
+        """Resume Metadata endpoint"""
         threading.Thread(
             target=lambda: scheduler
             .resume_job("update_metadata")).start()
@@ -157,41 +157,15 @@ class Resume(Resource):
 nsplaylist = api.namespace('playlist', 'Playlist APIs')
 
 
-@nsplaylist.route('/run')
-class Run(Resource):
-    """Run class"""
+@nsplaylist.route('/import')
+class Import(Resource):
+    """Import Playlist class"""
 
     def get(self):
-        """Run endpoint"""
+        """Import Playlist endpoint"""
         threading.Thread(
-            target=lambda: scheduler
-            .run_job("import_playlists")).start()
+            target=lambda: downloader_ytm.playlist).start()
         return "Starting import_playlists job!"
-
-
-@nsplaylist.route('/pause')
-class Pause(Resource):
-    """Pause class"""
-
-    def get(self):
-        """Pause endpoint"""
-        threading.Thread(
-            target=lambda: scheduler
-            .pause_job("import_playlists")).start()
-        return "Pausing import_playlists job!"
-
-
-@nsplaylist.route('/resume')
-class Resume(Resource):
-    """Resume class"""
-
-    def get(self):
-        """Resume endpoint"""
-        threading.Thread(
-            target=lambda: scheduler
-            .resume_job("import_playlists")).start()
-        return "Resume import_playlists Job!"
-
 
 scheduler.add_job(
     func=downloader_ytm.get,
@@ -211,14 +185,14 @@ scheduler.add_job(
     max_instances=1
 )
 
-scheduler.add_job(
-    func=downloader_ytm.playlist,
-    trigger="interval",
-    minutes=int(os.environ.get("SCHEDULER_MINUTES", 4320)),
-    id="import_playlists",
-    replace_existing=True,
-    max_instances=1
-)
+#scheduler.add_job(
+#    func=downloader_ytm.playlist,
+#    trigger="interval",
+#    minutes=int(os.environ.get("SCHEDULER_MINUTES", 4320)),
+#    id="import_playlists",
+#    replace_existing=True,
+#    max_instances=1
+#)
 
 scheduler.start()
 

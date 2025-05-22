@@ -5,6 +5,7 @@ import traceback
 import eyed3
 import logging
 import emoji
+import requests
 from tqdm import tqdm
 from os.path import dirname
 from os.path import join
@@ -26,6 +27,11 @@ load_dotenv(dotenv_path)
 
 eyed3.log.setLevel("ERROR")
 
+os.environ['http_proxy'] = os.environ.get("SQUID_PROXY_URL") 
+os.environ['HTTP_PROXY'] = os.environ.get("SQUID_PROXY_URL") 
+os.environ['https_proxy'] = os.environ.get("SQUID_PROXY_URL") 
+os.environ['HTTPS_PROXY'] = os.environ.get("SQUID_PROXY_URL") 
+
 
 class Arguments:
     def __init__(self):
@@ -34,18 +40,28 @@ class Arguments:
             os.path.realpath(__file__)) + '/config/.spotipy'
         self.cookie_file = os.path.dirname(
             os.path.realpath(__file__)) + '/config/cookies.txt'
-
+        self.yt_dlp_args = " --proxy " + os.environ.get("SQUID_PROXY_URL")
+        self.proxy = os.environ.get("SQUID_PROXY_URL")
 
 class GetMusic(object):
 
     def __init__(self):
+        proxies = {"http": os.environ.get("SQUID_PROXY_URL"), "https": os.environ.get("SQUID_PROXY_URL")}
+        
+        session = requests.Session()
+        session.proxies.update(proxies)
 
         self.ytmusic = YTMusic(
             auth=os.path.dirname(
                 os.path.realpath(__file__)) + '/config/oauth.json',
             oauth_credentials=OAuthCredentials(
                 client_id=os.environ.get("YT_CLIENT_ID"),
-                client_secret=os.environ.get("YT_SECRET_ID")))
+                client_secret=os.environ.get("YT_SECRET_ID"),
+                proxies = proxies,
+                session = session),
+            proxies = proxies,
+            requests_session = session)
+
         self.spotify_settings, self.downloader_settings, web_settings = create_settings(
             Arguments())
 
@@ -54,6 +70,11 @@ class GetMusic(object):
             self.downloader_settings["log_format"])
 
         self.logger = logging.getLogger('werkzeug')
+
+        self.client = None
+        self.init_spotify()
+        self.logger.info(
+            "GetMusic Initialized!")
 
     def delete_old_m3u(self):
         for item in os.listdir(os.environ.get("SPOTDL_PLAYLIST_PATH")):
@@ -276,10 +297,8 @@ class GetMusic(object):
         return audio_files, track_list
 
     def init_spotify(self):
-        try:
-            SpotifyClient.init(**self.spotify_settings)
-        except SpotifyError:
-            pass
+        if self.client is None or self.client._initialized == False:
+            self.client = SpotifyClient.init(**self.spotify_settings)
 
     def update_metadata(self, audio_files, chunks_len=32):
         if len(audio_files) == 0:
@@ -350,6 +369,8 @@ class GetMusic(object):
                 self.remove_empty_dirs()
 
             self.download_songs(track_list)
+            self.delete_old_m3u()
+            self.get_playlists([], generate_m3u=True)
 
         except Exception:
             self.logger.error(traceback.format_exc())

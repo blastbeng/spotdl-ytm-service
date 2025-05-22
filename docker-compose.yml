@@ -19,3 +19,27 @@ services:
       - "./config/config.json:/home/ytmuser/.spotdl/config.json"
       - "./config:/app/config"
       - "/var/media/musica:/var/media/musica"
+    networks:
+      spotdl-ytm-network:
+        ipv4_address: 10.5.0.5
+  spotdl-ytm-squid:
+    image: ubuntu/squid:latest
+    container_name: spotdl-ytm-squid
+    ports:
+      - "127.0.0.1:3128:3128"
+    volumes:
+      - ./config/squid.conf:/etc/squid/squid.conf
+    restart: unless-stopped
+    networks:
+      spotdl-ytm-network:
+        ipv4_address: 10.5.0.6
+
+
+networks:
+  spotdl-ytm-network:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+     config:
+       - subnet: 10.5.0.0/16
+         gateway: 10.5.0.1
