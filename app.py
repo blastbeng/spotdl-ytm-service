@@ -4,6 +4,8 @@ from get_music import GetMusic
 from config import Config
 import eyed3
 import logging
+import datetime
+from logging.handlers import RotatingFileHandler
 from time import strftime
 from tqdm import tqdm
 from os.path import dirname
@@ -24,20 +26,76 @@ from flask import send_file
 from flask import Response
 from flask_restx import Api
 from flask_restx import Resource
+from tqdm_loggable.tqdm_logging import tqdm_logging
+from classes import Arguments
 import threading
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
+if not os.path.exists(os.environ.get("SPOTDL_PLAYLIST_PATH")):
+    os.makedirs(os.environ.get("SPOTDL_PLAYLIST_PATH"))
+cfg_dir = os.path.dirname(
+    os.path.realpath(__file__)) + '/config'
+if not os.path.exists(cfg_dir):
+    os.makedirs(cfg_dir)
+log_dir = os.path.dirname(
+    os.path.realpath(__file__)) + '/logs'
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
 logging.basicConfig(
+    handlers=[
+        RotatingFileHandler(os.path.dirname(
+            os.path.realpath(__file__)) + 
+            "/logs/spotdl-ytm-service.log", maxBytes=1048576,
+            backupCount=5),
+        logging.StreamHandler()],
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=int(
         os.environ.get("LOG_LEVEL", 40)),
     datefmt='%Y-%m-%d %H:%M:%S')
 
 
-log = logging.getLogger('werkzeug')
-log.setLevel(int(os.environ.get("LOG_LEVEL",
+logging.getLogger('werkzeug').setLevel(int(os.environ.get("LOG_LEVEL",
+             40)))
+logging.getLogger('apscheduler').setLevel(int(os.environ.get("LOG_LEVEL",
+             40)))
+
+
+tqdm_logging.set_level(int(os.environ.get("LOG_LEVEL",
+             40)))
+tqdm_logging.set_log_rate(datetime.timedelta(seconds=10))
+
+
+
+spotify_settings, downloader_settings, web_settings = create_settings(
+    Arguments())
+
+init_logging(
+    downloader_settings["log_level"],
+    downloader_settings["log_format"])
+
+
+logging.getLogger("requests").setLevel(int(os.environ.get("LOG_LEVEL",
+                    40)))
+logging.getLogger("urllib3").setLevel(int(os.environ.get("LOG_LEVEL",
+                    40)))
+logging.getLogger("spotipy").setLevel(int(os.environ.get("LOG_LEVEL",
+                    40)))
+logging.getLogger("asyncio").setLevel(int(os.environ.get("LOG_LEVEL",
+                    40)))
+logging.getLogger("syncedlyrics").setLevel(int(os.environ.get("LOG_LEVEL",
+                    40)))
+logging.getLogger("bandcamp_api").setLevel(int(os.environ.get("LOG_LEVEL",
+                    40)))
+logging.getLogger("beautifulsoup4").setLevel(int(os.environ.get("LOG_LEVEL",
+                    40)))
+logging.getLogger("pytube").setLevel(int(os.environ.get("LOG_LEVEL",
+                    40)))
+
+logger = logging.getLogger(__name__)
+logger.setLevel(int(os.environ.get("LOG_LEVEL",
              40)))
 
 app = Flask(__name__)
@@ -46,8 +104,7 @@ app.config.from_object(Config)
 scheduler = APScheduler()
 scheduler.init_app(app)
 api = Api(app)
-downloader_ytm = GetMusic()
-
+downloader_ytm = GetMusic(spotify_settings, downloader_settings, logger)
 
 @app.after_request
 def after_request(response):
@@ -170,31 +227,25 @@ class Import(Resource):
 scheduler.add_job(
     func=downloader_ytm.get,
     trigger="interval",
-    minutes=int(os.environ.get("SCHEDULER_MINUTES", 1440)),
+    minutes=int(os.environ.get("DOWNLOAD_MINUTES", 1440)),
     id="download_music",
-    replace_existing=True,
+    replace_existing=False,
     max_instances=1
 )
 
 scheduler.add_job(
     func=downloader_ytm.meta,
     trigger="interval",
-    minutes=int(os.environ.get("SCHEDULER_MINUTES", 7200)),
+    minutes=int(os.environ.get("METADATA_MINUTES", 7200)),
     id="update_metadata",
-    replace_existing=True,
+    replace_existing=False,
     max_instances=1
 )
 
-#scheduler.add_job(
-#    func=downloader_ytm.playlist,
-#    trigger="interval",
-#    minutes=int(os.environ.get("SCHEDULER_MINUTES", 4320)),
-#    id="import_playlists",
-#    replace_existing=True,
-#    max_instances=1
-#)
-
 scheduler.start()
+
+logging.info(scheduler.get_job("download_music"))
+logging.info(scheduler.get_job("update_metadata"))
 
 if __name__ == '__main__':
     app.run()

@@ -6,12 +6,14 @@ import eyed3
 import logging
 import emoji
 import requests
-from tqdm import tqdm
+import datetime
+from tqdm_loggable.auto import tqdm
 from os.path import dirname
 from os.path import join
 from pathlib import Path
 from dotenv import load_dotenv
 from ytmusicapi import YTMusic
+from logging.handlers import RotatingFileHandler
 from ytmusicapi.auth.oauth import OAuthCredentials
 from spotdl.utils.spotify import SpotifyClient
 from spotdl.console import download
@@ -30,26 +32,20 @@ eyed3.log.setLevel("ERROR")
 os.environ['http_proxy'] = os.environ.get("SQUID_PROXY_URL") 
 os.environ['HTTP_PROXY'] = os.environ.get("SQUID_PROXY_URL") 
 os.environ['https_proxy'] = os.environ.get("SQUID_PROXY_URL") 
-os.environ['HTTPS_PROXY'] = os.environ.get("SQUID_PROXY_URL") 
-
-
-class Arguments:
-    def __init__(self):
-        self.config = True
-        self.cache_path = os.path.dirname(
-            os.path.realpath(__file__)) + '/config/.spotipy'
-        self.cookie_file = os.path.dirname(
-            os.path.realpath(__file__)) + '/config/cookies.txt'
-        self.yt_dlp_args = " --proxy " + os.environ.get("SQUID_PROXY_URL")
-        self.proxy = os.environ.get("SQUID_PROXY_URL")
+os.environ['HTTPS_PROXY'] = os.environ.get("SQUID_PROXY_URL")
 
 class GetMusic(object):
 
-    def __init__(self):
+    def __init__(self, spotify_settings, downloader_settings, logger):
         proxies = {"http": os.environ.get("SQUID_PROXY_URL"), "https": os.environ.get("SQUID_PROXY_URL")}
         
         session = requests.Session()
         session.proxies.update(proxies)
+
+        self.logger = logger
+        self.downloader_settings = downloader_settings
+        self.spotify_settings = spotify_settings
+        self.client = SpotifyClient.init(**spotify_settings)
 
         self.ytmusic = YTMusic(
             auth=os.path.dirname(
@@ -62,28 +58,10 @@ class GetMusic(object):
             proxies = proxies,
             requests_session = session)
 
-        self.spotify_settings, self.downloader_settings, web_settings = create_settings(
-            Arguments())
-
-        init_logging(
-            self.downloader_settings["log_level"],
-            self.downloader_settings["log_format"])
-
-        self.logger = logging.getLogger('werkzeug')
-
-        self.client = None
-        self.init_spotify()
-        self.logger.info(
-            "GetMusic Initialized!")
-
     def delete_old_m3u(self):
         for item in os.listdir(os.environ.get("SPOTDL_PLAYLIST_PATH")):
             if item.endswith(".m3u"):
                 os.remove(os.path.join(os.environ.get("SPOTDL_PLAYLIST_PATH"), item))
-
-    def make_dirs(self):
-        if not os.path.exists(os.environ.get("SPOTDL_PLAYLIST_PATH")):
-            os.makedirs(os.environ.get("SPOTDL_PLAYLIST_PATH"))
 
     def get_subscriptions_tracks(self, track_list):
         liked_suscriptions = self.ytmusic.get_library_subscriptions(limit=None)
@@ -166,7 +144,7 @@ class GetMusic(object):
             audio_objects = self.get_audio_objects()
 
         if generate_m3u and len(audio_objects) == 0:
-            logger.warning("No existing audio files found, Skipping playlist import procedure")
+            self.logger.warning("No existing audio files found, Skipping playlist import procedure")
         else:
             for library_playlist in tqdm(library_playlists, desc='Importing playlists' if generate_m3u else 'Scanning playlists'):
                 playlist = self.ytmusic.get_playlist(
@@ -296,16 +274,11 @@ class GetMusic(object):
                     track_list.remove(audio.tag.comments[0].text.strip())
         return audio_files, track_list
 
-    def init_spotify(self):
-        if self.client is None or self.client._initialized == False:
-            self.client = SpotifyClient.init(**self.spotify_settings)
-
     def update_metadata(self, audio_files, chunks_len=32):
         if len(audio_files) == 0:
             self.logger.info(
                 "No existing songs found, skipping metadata update...")
         else:
-            self.init_spotify()
             random.shuffle(audio_files)
             chunks_audio_files = [audio_files[x:x + chunks_len]
                                   for x in range(0, len(audio_files), chunks_len)]
@@ -319,7 +292,6 @@ class GetMusic(object):
         if len(track_list) == 0:
             self.logger.info("No new songs found, skipping download...")
         else:
-            self.init_spotify()
             random.shuffle(track_list)
             cleaned_tracks = self.verify_songs_from_ytm(track_list)
             chunks_track_list = [cleaned_tracks[x:x + chunks_len]
@@ -361,7 +333,6 @@ class GetMusic(object):
             self.logger.info("START - get_music.get")
             os.chdir(os.environ.get("SPOTDL_MUSIC_PATH"))
 
-            self.make_dirs()
             track_list = self.get_tracks()
 
             audio_files, track_list = self.verify_mp3_files(track_list)

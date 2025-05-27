@@ -27,6 +27,7 @@ COPY app.py .
 COPY config.py .
 COPY config_gunicorn.py .
 COPY get_music.py .
+COPY classes.py .
 COPY docker/entrypoint.sh .
 RUN chmod +x entrypoint.sh
 

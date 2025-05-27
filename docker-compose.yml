@@ -18,6 +18,7 @@ services:
       - ".env:/app/.env"
       - "./config/config.json:/home/ytmuser/.spotdl/config.json"
       - "./config:/app/config"
+      - "./logs:/app/logs"
       - "/var/media/musica:/var/media/musica"
     networks:
       spotdl-ytm-network:

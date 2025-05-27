@@ -1,2 +1,2 @@
 #!/bin/sh
-gunicorn app:app -k gevent -c config_gunicorn.py --preload
+gunicorn app:app -k eventlet -c config_gunicorn.py --preload --capture-output --enable-stdio-inheritance
