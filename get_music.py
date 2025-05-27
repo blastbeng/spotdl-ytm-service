@@ -7,7 +7,7 @@ import logging
 import emoji
 import requests
 import datetime
-from tqdm_loggable.auto import tqdm
+from tqdm import tqdm
 from os.path import dirname
 from os.path import join
 from pathlib import Path
@@ -66,7 +66,7 @@ class GetMusic(object):
     def get_subscriptions_tracks(self, track_list):
         liked_suscriptions = self.ytmusic.get_library_subscriptions(limit=None)
         for subscription in tqdm(liked_suscriptions,
-                                 desc="Scanning suscriptions"):
+                                 file=logging.getLoggerClass().root.handlers[0].stream, desc="Scanning suscriptions"):
             if subscription['type'] == 'artist':
                 artist = self.ytmusic.get_artist(
                     channelId=subscription['browseId'])
@@ -100,7 +100,7 @@ class GetMusic(object):
 
     def get_library_songs_tracks(self, track_list):
         library_songs = self.ytmusic.get_library_songs(limit=None)
-        for track in tqdm(library_songs, desc="Scanning library songs"):
+        for track in tqdm(library_songs, file=logging.getLoggerClass().root.handlers[0].stream, desc="Scanning library songs"):
             if self.verify_track(track, track_list):
                 track_list.append(self.append_track(track['videoId']))
         return track_list
@@ -123,7 +123,7 @@ class GetMusic(object):
 
     def get_history(self, track_list):
         history_songs = self.ytmusic.get_history()
-        for track in tqdm(history_songs, desc="Scanning history songs"):
+        for track in tqdm(history_songs, file=logging.getLoggerClass().root.handlers[0].stream, desc="Scanning history songs"):
             if self.verify_track(track, track_list):
                 track_list.append(self.append_track(track['videoId']))
         return track_list
@@ -132,7 +132,7 @@ class GetMusic(object):
         liked_songs = self.ytmusic.get_liked_songs(limit=None)
         if 'tracks' in liked_songs:
             for track in tqdm(
-                    liked_songs['tracks'], desc="Scanning liked songs"):
+                    liked_songs['tracks'], file=logging.getLoggerClass().root.handlers[0].stream, desc="Scanning liked songs"):
                 if self.verify_track(track, track_list):
                     track_list.append(self.append_track(track['videoId']))
         return track_list
@@ -146,7 +146,7 @@ class GetMusic(object):
         if generate_m3u and len(audio_objects) == 0:
             self.logger.warning("No existing audio files found, Skipping playlist import procedure")
         else:
-            for library_playlist in tqdm(library_playlists, desc='Importing playlists' if generate_m3u else 'Scanning playlists'):
+            for library_playlist in tqdm(library_playlists, file=logging.getLoggerClass().root.handlers[0].stream, desc='Importing playlists' if generate_m3u else 'Scanning playlists'):
                 playlist = self.ytmusic.get_playlist(
                     library_playlist['playlistId'], limit=None)
                 if 'tracks' in playlist and 'title' in playlist and (
@@ -180,7 +180,7 @@ class GetMusic(object):
     def get_audio_files(self):
         audio_files = []
         for subdir, dirs, files in tqdm(os.walk(
-                os.environ.get("SPOTDL_MUSIC_PATH")), desc="Reading existing files"):
+                os.environ.get("SPOTDL_MUSIC_PATH")), file=logging.getLoggerClass().root.handlers[0].stream, desc="Reading existing files"):
             for file in files:
                 if file.endswith('.mp3'):
                     audio_files.append(os.path.join(subdir, file))
@@ -189,7 +189,7 @@ class GetMusic(object):
     def get_audio_objects(self):
         audio_objects = []
         audio_files = self.get_audio_files()
-        for audio_file_path in tqdm(audio_files, desc="Reading audio tags"):
+        for audio_file_path in tqdm(audio_files, file=logging.getLoggerClass().root.handlers[0].stream, desc="Reading audio tags"):
             if audio_file_path.endswith('.mp3'):
                 audio = eyed3.load(audio_file_path)
                 if audio is None:
@@ -225,7 +225,7 @@ class GetMusic(object):
 
     def verify_songs_from_ytm(self, tracks):
         for track in tqdm(list(tracks),
-                          desc="Verifying youtube music responses"):
+                          file=logging.getLoggerClass().root.handlers[0].stream, desc="Verifying youtube music responses"):
             song_from_ytm = self.ytmusic.get_song(track.split("?v=", 1)[1])
             if 'videoDetails' not in song_from_ytm:
                 self.logger.warning(
@@ -247,7 +247,7 @@ class GetMusic(object):
     def verify_mp3_files(self, track_list, init=True):
         audio_files = self.get_audio_files()
         for audio_file_path in tqdm(
-                list(audio_files), desc="Performing corrupted file check"):
+                list(audio_files), file=logging.getLoggerClass().root.handlers[0].stream, desc="Performing corrupted file check"):
             audio = eyed3.load(audio_file_path)
             if audio is None:
                 audio_files = self.delete_audio_file(audio_file_path, audio_files)
@@ -282,7 +282,7 @@ class GetMusic(object):
             random.shuffle(audio_files)
             chunks_audio_files = [audio_files[x:x + chunks_len]
                                   for x in range(0, len(audio_files), chunks_len)]
-            with tqdm(total=len(audio_files), desc="Updating songs metadata") as ubar:
+            with tqdm(total=len(audio_files), file=logging.getLoggerClass().root.handlers[0].stream, desc="Updating songs metadata") as ubar:
                 for chunk_audio in chunks_audio_files:
                     meta.meta(
                         chunk_audio, Downloader(self.downloader_settings))
@@ -296,7 +296,7 @@ class GetMusic(object):
             cleaned_tracks = self.verify_songs_from_ytm(track_list)
             chunks_track_list = [cleaned_tracks[x:x + chunks_len]
                                  for x in range(0, len(cleaned_tracks), chunks_len)]
-            with tqdm(total=len(track_list), desc="Downloadings tracks") as dbar:
+            with tqdm(total=len(track_list), file=logging.getLoggerClass().root.handlers[0].stream, desc="Downloadings tracks") as dbar:
                 for chunk_track in chunks_track_list:
                     download.download(
                         chunk_track, Downloader(self.downloader_settings))

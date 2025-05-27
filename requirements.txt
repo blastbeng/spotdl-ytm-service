@@ -8,7 +8,7 @@ autopep8
 ytmdl
 spotdl
 eyed3
-tqdm_loggable
+tqdm
 gunicorn==23.0.0
 eventlet
 emoji

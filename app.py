@@ -5,6 +5,7 @@ from config import Config
 import eyed3
 import logging
 import datetime
+from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 from time import strftime
 from tqdm import tqdm
@@ -26,7 +27,6 @@ from flask import send_file
 from flask import Response
 from flask_restx import Api
 from flask_restx import Resource
-from tqdm_loggable.tqdm_logging import tqdm_logging
 from classes import Arguments
 import threading
 
@@ -49,8 +49,7 @@ logging.basicConfig(
         RotatingFileHandler(os.path.dirname(
             os.path.realpath(__file__)) + 
             "/logs/spotdl-ytm-service.log", maxBytes=1048576,
-            backupCount=5),
-        logging.StreamHandler()],
+            backupCount=5)],
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=int(
         os.environ.get("LOG_LEVEL", 40)),
@@ -61,12 +60,6 @@ logging.getLogger('werkzeug').setLevel(int(os.environ.get("LOG_LEVEL",
              40)))
 logging.getLogger('apscheduler').setLevel(int(os.environ.get("LOG_LEVEL",
              40)))
-
-
-tqdm_logging.set_level(int(os.environ.get("LOG_LEVEL",
-             40)))
-tqdm_logging.set_log_rate(datetime.timedelta(seconds=10))
-
 
 
 spotify_settings, downloader_settings, web_settings = create_settings(
@@ -97,6 +90,12 @@ logging.getLogger("pytube").setLevel(int(os.environ.get("LOG_LEVEL",
 logger = logging.getLogger(__name__)
 logger.setLevel(int(os.environ.get("LOG_LEVEL",
              40)))
+logger.addHandler(
+        RotatingFileHandler(os.path.dirname(
+            os.path.realpath(__file__)) + 
+            "/logs/spotdl-ytm-service.log", maxBytes=1048576,
+            backupCount=5))
+logger.addHandler(StreamHandler())
 
 app = Flask(__name__)
 app.config.from_object(Config)
