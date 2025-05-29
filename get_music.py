@@ -253,21 +253,21 @@ class GetMusic(object):
                 audio_files = self.delete_audio_file(audio_file_path, audio_files)
             elif init:
                 if audio.tag.comments is None or len(audio.tag.comments) == 0:
-                    self.logger.warning(
+                    self.logger.debug(
                         "Deleting " +
                         audio_file_path +
                         ", no download link found for this song")
                     os.remove(audio_file_path)
                     audio_files.remove(audio_file_path)
                 elif audio.tag.comments[0].text.strip() not in track_list:
-                    self.logger.warning(
+                    self.logger.debug(
                         "Deleting " +
                         audio_file_path +
                         ", this song is not present inside the requested track list")
                     os.remove(audio_file_path)
                     audio_files.remove(audio_file_path)
                 elif audio.tag.comments[0].text.strip() in track_list:
-                    self.logger.info(
+                    self.logger.debug(
                         "Skipping " +
                         audio_file_path +
                         ", this song was already downloaded")
